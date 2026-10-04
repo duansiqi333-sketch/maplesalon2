@@ -10,6 +10,7 @@ import { ExportHandTypeToggleGroup } from './ExportHandTypeToggleGroup';
 import { ExportAnimateButton } from './ExportAnimateButton';
 import { ExportFrameButton } from './ExportFrameButton';
 import { ExportPartsButton } from './ExportPartsButton';
+import { ExportSpriteSheetButton } from './ExportSpriteSheetButton';
 import { ForceExportEffectSwitch } from './ForceExportEffectSwitch';
 import type { ActionCharacterRef } from './ActionCharacter';
 
@@ -41,6 +42,7 @@ export const ActionTabTitle = (props: ActionTabTitleProps) => {
           <ExportPartsButton characterRefs={props.characterRefs} />
           <ExportAnimateButton characterRefs={props.characterRefs} />
           <ExportFrameButton characterRefs={props.characterRefs} />
+          <ExportSpriteSheetButton characterRefs={props.characterRefs} />
         </HStack>
       </HStack>
     </TitleContainer>
