@@ -92,9 +92,9 @@ export const ExportSpriteSheetButton = (props: ExportSpriteSheetButtonProps) => 
         );
       }
       // 小冊子定位公式需要的 body 錨點（取第一個角色；單角色匯出時即為該角色）
-      const firstCharacter = props.characterRefs[0]?.character;
-      const specialAnchor = firstCharacter
-        ? getSpecialAnchor(firstCharacter)
+      const anchorCharacter = props.characterRefs[0]?.character;
+      const specialAnchor = anchorCharacter
+        ? getSpecialAnchor(anchorCharacter as never)
         : { x: 0, y: 0 };
       const { canvas, missing } = buildSpriteSheet(
         framesByAction,
