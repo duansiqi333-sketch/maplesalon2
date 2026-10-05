@@ -6,11 +6,13 @@
  * 透明底。動作 → 格位的映射（actionFrameMap）與幀復用（frameReferences）
  * 皆取自該站前端，還原為下方常數。
  *
- * 對齊方式：官方 MapleStory Worlds 皮膚 PSD 模板（Avatar_Cape.psd，
- * 2750×3500）每格都有參考人偶，其 data:origin 錨點位置經實測記錄於
- * SPRITE_ANCHORS（格號 → 格內相對座標）。每幀以其不透明像素底部
- * 中央（腳底中心）為源錨點，對齊到該格的官方錨點，而非居中繪製；
- * 居中會因各動作包圍盒不同而讓人物在每格亂飄。
+ * 對齊方式：完整移植紙娃娃小冊子（https://mxd.dvg.cn/zhiwawa_v4/）的
+ * 定位公式。每幀繪製偏移為：
+ *   offsetX = 150 - specialAnchor.x - frame.left - N10[action.frame].x
+ *   offsetY = 150 - specialAnchor.y - frame.top - N10[action.frame].y
+ * 其中 specialAnchor 是角色 bodyFrame 相對於角色根節點的座標
+ * （小冊子 Y10/X10），frame.left/top 取自 UniversalFrame，
+ * N10 為小冊子逐幀修正表（FRAME_ORIGIN）。不再做像素包圍盒估算。
  *
  * 本檔為純函式 + 可注入的 canvas 工廠，不依賴瀏覽器全域變數，
  * 以便在 Node 環境下做 headless 單元測試。
@@ -170,8 +172,114 @@ export const FRAME_REFERENCES: Record<string, string> = {
  */
 export const FALLBACK_ANCHOR = { tx: 132, ty: 149 };
 
+/**
+ * 小冊子逐幀修正表（N10）：`動作.影格序號` → 該影格在官方模板中的
+ * 微調偏移（單位 px）。取自紙娃娃小冊子前端，與小冊子公式配套使用。
+ */
+export const FRAME_ORIGIN: Record<string, { x: number; y: number }> = {
+  "alert.0": { x: 8, y: 0 },
+  "alert.1": { x: 8, y: 0 },
+  "alert.2": { x: 8, y: 0 },
+  "fly.0": { x: 12, y: 0 },
+  "fly.1": { x: 8, y: 0 },
+  "heal.0": { x: 0, y: 0 },
+  "heal.1": { x: 0, y: 0 },
+  "heal.2": { x: 0, y: 0 },
+  "jump.0": { x: 13, y: 0 },
+  "ladder.0": { x: 20, y: 0 },
+  "ladder.1": { x: 23, y: 2 },
+  "prone.0": { x: -3, y: 0 },
+  "proneStab.0": { x: -3, y: 0 },
+  "proneStab.1": { x: -3, y: 0 },
+  "rope.0": { x: 22, y: 0 },
+  "rope.1": { x: 22, y: 0 },
+  "shoot1.0": { x: 6, y: 0 },
+  "shoot1.1": { x: 6, y: 0 },
+  "shoot1.2": { x: 6, y: 0 },
+  "shoot2.0": { x: 7, y: 0 },
+  "shoot2.1": { x: 7, y: 0 },
+  "shoot2.2": { x: 7, y: 0 },
+  "shoot2.3": { x: 7, y: 0 },
+  "shoot2.4": { x: 7, y: 0 },
+  "shootF.0": { x: 6, y: 0 },
+  "shootF.1": { x: 9, y: 0 },
+  "shootF.2": { x: 9, y: 0 },
+  "sit.0": { x: 6, y: -3 },
+  "stabO1.0": { x: 9, y: 0 },
+  "stabO1.1": { x: -3, y: 0 },
+  "stabO2.0": { x: 8, y: 0 },
+  "stabO2.1": { x: -6, y: 0 },
+  "stabOF.0": { x: 11, y: 0 },
+  "stabOF.1": { x: -1, y: -2 },
+  "stabOF.2": { x: -12, y: 0 },
+  "stabT1.0": { x: 2, y: 0 },
+  "stabT1.1": { x: 0, y: 0 },
+  "stabT1.2": { x: -15, y: 0 },
+  "stabT2.0": { x: 11, y: 0 },
+  "stabT2.1": { x: 10, y: 0 },
+  "stabT2.2": { x: -8, y: 0 },
+  "stabTF.0": { x: 15, y: 0 },
+  "stabTF.1": { x: 13, y: 0 },
+  "stabTF.2": { x: -9, y: -16 },
+  "stabTF.3": { x: -15, y: 0 },
+  "stand1.0": { x: 16, y: 0 },
+  "stand1.1": { x: 16, y: 0 },
+  "stand1.2": { x: 16, y: 0 },
+  "stand2.0": { x: 16, y: 0 },
+  "stand2.1": { x: 16, y: 0 },
+  "stand2.2": { x: 16, y: 0 },
+  "swingO1.0": { x: 17, y: 0 },
+  "swingO1.1": { x: 8, y: 0 },
+  "swingO1.2": { x: 0, y: 0 },
+  "swingO2.0": { x: 6, y: 0 },
+  "swingO2.1": { x: 7, y: 0 },
+  "swingO2.2": { x: 6, y: 0 },
+  "swingO3.0": { x: 11, y: 0 },
+  "swingO3.1": { x: -8, y: 0 },
+  "swingO3.2": { x: -8, y: 0 },
+  "swingOF.0": { x: 8, y: 0 },
+  "swingOF.1": { x: 3, y: -6 },
+  "swingOF.2": { x: -15, y: -4 },
+  "swingOF.3": { x: -19, y: 0 },
+  "swingP1.0": { x: 16, y: 0 },
+  "swingP1.1": { x: 3, y: 0 },
+  "swingP1.2": { x: 4, y: 0 },
+  "swingP2.0": { x: 7, y: 0 },
+  "swingP2.1": { x: 7, y: 0 },
+  "swingP2.2": { x: 9, y: 0 },
+  "swingPF.0": { x: 15, y: 0 },
+  "swingPF.1": { x: 13, y: 0 },
+  "swingPF.2": { x: -1, y: -16 },
+  "swingPF.3": { x: -28, y: 0 },
+  "swingT1.0": { x: 16, y: 0 },
+  "swingT1.1": { x: 3, y: 0 },
+  "swingT1.2": { x: 4, y: 0 },
+  "swingT2.0": { x: 5, y: 0 },
+  "swingT2.1": { x: 5, y: 0 },
+  "swingT2.2": { x: 5, y: 0 },
+  "swingT3.0": { x: 15, y: 0 },
+  "swingT3.1": { x: 10, y: 0 },
+  "swingT3.2": { x: 13, y: 0 },
+  "swingTF.0": { x: 3, y: 0 },
+  "swingTF.1": { x: 3, y: 0 },
+  "swingTF.2": { x: 2, y: 0 },
+  "swingTF.3": { x: 1, y: 0 },
+  "walk1.0": { x: 16, y: 0 },
+  "walk1.1": { x: 16, y: 0 },
+  "walk1.2": { x: 16, y: 0 },
+  "walk1.3": { x: 16, y: 0 },
+  "walk2.0": { x: 16, y: 0 },
+  "walk2.1": { x: 16, y: 0 },
+  "walk2.2": { x: 16, y: 0 },
+  "walk2.3": { x: 16, y: 0 },
+};
+
 export interface SpriteSheetFrame {
   canvas: HTMLCanvasElement;
+  /** 該影格內容在 canvas 中的繪製 X（UniversalFrame.left；小冊子公式用） */
+  left?: number;
+  /** 該影格內容在 canvas 中的繪製 Y（UniversalFrame.top；小冊子公式用） */
+  top?: number;
 }
 
 export type CanvasFactory = () => HTMLCanvasElement;
@@ -312,12 +420,45 @@ const defaultCanvasFactory: CanvasFactory = () =>
   document.createElement('canvas');
 
 /**
+ * 計算小冊子公式中的 specialAnchor：角色 bodyFrame 相對於角色根節點
+ * 的座標。對應小冊子前端的 Y10/X10（沿 bodyFrame → character 的
+ * transform 鏈累加）。用 Pixi 內建的 toLocal 等價實現。
+ *
+ * 若取不到則回傳 { x: 0, y: 0 }（小冊子公式本來就有 ?? 0 兜底）。
+ */
+export function getSpecialAnchor(character: {
+  bodyFrame?: { getGlobalPosition?: (p: unknown) => { x: number; y: number } };
+  toLocal?: (p: { x: number; y: number }) => { x: number; y: number };
+}): { x: number; y: number } {
+  try {
+    const bf = character?.bodyFrame;
+    const toLocal = character?.toLocal;
+    if (!bf?.getGlobalPosition || !toLocal) {
+      return { x: 0, y: 0 };
+    }
+    // bodyFrame 的世界座標，轉回角色本地座標
+    const world = bf.getGlobalPosition({ x: 0, y: 0 } as never);
+    const local = toLocal.call(character, world as never) as {
+      x: number;
+      y: number;
+    };
+    if (!Number.isFinite(local?.x) || !Number.isFinite(local?.y)) {
+      return { x: 0, y: 0 };
+    }
+    return { x: local.x, y: local.y };
+  } catch {
+    return { x: 0, y: 0 };
+  }
+}
+
+/**
  * 將各動作的影格拼成 2750×3500 整合圖。
  * 每幀以腳底中心對齊該格的官方模板錨點；缺少影格的格子留空並計入 missing。
  */
 export function buildSpriteSheet(
   framesByAction: Map<string, SpriteSheetFrame[]>,
   createCanvas: CanvasFactory = defaultCanvasFactory,
+  specialAnchor: { x: number; y: number } = { x: 0, y: 0 },
 ): SpriteSheetResult {
   const canvas = createCanvas();
   canvas.width = SPRITE_SHEET_WIDTH;
@@ -327,6 +468,13 @@ export function buildSpriteSheet(
     throw new Error('Cannot create 2d context for sprite sheet');
   }
   ctx.imageSmoothingEnabled = false;
+
+  // 小冊子公式：基準點為格內 (150, 150)（小冊子寫死 150，非格幾何中央），
+  // offset = 150 - specialAnchor - frame.left/top - N10修正。
+  // 對應小冊子前端 J10：
+  //   offsetX = Math.round(150 - (specialAnchor?.x ?? 0) - t.left - n.x)
+  //   offsetY = Math.round(150 - (specialAnchor?.y ?? 0) - t.top - n.y)
+  const CENTER = 150;
 
   let found = 0;
   let missing = 0;
@@ -338,18 +486,15 @@ export function buildSpriteSheet(
         missing += 1;
         continue;
       }
+      // 實際使用的 key（含復用回退）：拿解析後的動作名+序號查 N10
+      const nKey = `${action}.${i}`;
+      const n = FRAME_ORIGIN[nKey] ?? { x: 0, y: 0 };
+      const fl = frame.left ?? 0;
+      const ft = frame.top ?? 0;
+      const offsetX = Math.round(CENTER - specialAnchor.x - fl - n.x);
+      const offsetY = Math.round(CENTER - specialAnchor.y - ft - n.y);
       const { x, y } = getCellPosition(slot);
-      const target = SPRITE_ANCHORS[slot] ?? FALLBACK_ANCHOR;
-      const w = frame.canvas.width;
-      const h = frame.canvas.height;
-      const source = getFrameSourceAnchor(frame.canvas);
-      const sx = source ? source.sx : w / 2;
-      const sy = source ? source.sy : h * 0.6;
-      ctx.drawImage(
-        frame.canvas,
-        Math.round(x + target.tx - sx),
-        Math.round(y + target.ty - sy),
-      );
+      ctx.drawImage(frame.canvas, x + offsetX, y + offsetY);
       found += 1;
     }
   }

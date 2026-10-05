@@ -16,7 +16,11 @@ import type { UniversalFrame } from '@/renderer/makeCanvasFrame';
 
 import { toaster } from '@/components/GlobalToast';
 import { batchExportCharacterFrames } from './batchExportCharacterFrames';
-import { buildSpriteSheet, type SpriteSheetFrame } from './spriteSheet';
+import {
+  buildSpriteSheet,
+  getSpecialAnchor,
+  type SpriteSheetFrame,
+} from './spriteSheet';
 import { downloadBlob } from '@/utils/download';
 import { nextTick } from '@/utils/eventLoop';
 
@@ -87,7 +91,16 @@ export const ExportSpriteSheetButton = (props: ExportSpriteSheetButtonProps) => 
           data.frames as UniversalFrame[],
         );
       }
-      const { canvas, missing } = buildSpriteSheet(framesByAction);
+      // 小冊子定位公式需要的 body 錨點（取第一個角色；單角色匯出時即為該角色）
+      const firstCharacter = props.characterRefs[0]?.character;
+      const specialAnchor = firstCharacter
+        ? getSpecialAnchor(firstCharacter)
+        : { x: 0, y: 0 };
+      const { canvas, missing } = buildSpriteSheet(
+        framesByAction,
+        undefined,
+        specialAnchor,
+      );
       const blob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob((b) => resolve(b), 'image/png');
       });
