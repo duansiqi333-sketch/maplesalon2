@@ -426,22 +426,26 @@ const defaultCanvasFactory: CanvasFactory = () =>
  *
  * 若取不到則回傳 { x: 0, y: 0 }（小冊子公式本來就有 ?? 0 兜底）。
  */
-export function getSpecialAnchor(character: {
-  bodyFrame?: { getGlobalPosition?: (p: unknown) => { x: number; y: number } };
-  toLocal?: (p: { x: number; y: number }) => { x: number; y: number };
-}): { x: number; y: number } {
+export function getSpecialAnchor(character: unknown): {
+  x: number;
+  y: number;
+} {
   try {
-    const bf = character?.bodyFrame;
-    const toLocal = character?.toLocal;
-    if (!bf?.getGlobalPosition || !toLocal) {
+    const c = character as {
+      bodyFrame?: { getGlobalPosition?: (...args: never[]) => unknown };
+      toLocal?: (...args: never[]) => unknown;
+    } | null;
+    const bf = c?.bodyFrame;
+    const toLocal = c?.toLocal;
+    if (typeof bf?.getGlobalPosition !== 'function' || typeof toLocal !== 'function') {
       return { x: 0, y: 0 };
     }
     // bodyFrame 的世界座標，轉回角色本地座標
-    const world = bf.getGlobalPosition({ x: 0, y: 0 } as never);
-    const local = toLocal.call(character, world as never) as {
-      x: number;
-      y: number;
-    };
+    const world = bf.getGlobalPosition() as { x: number; y: number };
+    const local = (toLocal as (p: unknown) => { x: number; y: number }).call(
+      c,
+      world,
+    );
     if (!Number.isFinite(local?.x) || !Number.isFinite(local?.y)) {
       return { x: 0, y: 0 };
     }
